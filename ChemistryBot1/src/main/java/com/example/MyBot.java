@@ -22,6 +22,7 @@ public class MyBot extends TelegramLongPollingBot {
         this.chemElementService = chemElementService;
     }
 
+
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String message = update.getMessage().getText();
