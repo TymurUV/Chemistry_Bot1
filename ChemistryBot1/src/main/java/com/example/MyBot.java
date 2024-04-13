@@ -1,7 +1,5 @@
 package com.example;
 
-import com.example.repository.ChemElementRepository;
-import com.example.repository.UserRepository;
 import com.example.service.ChemElementService;
 import com.example.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -14,17 +12,14 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 @Component
 @Slf4j
 public class MyBot extends TelegramLongPollingBot {
-    private final ChemElementRepository chemElementRepository;
+
     private final UserService userService;
     private final ChemElementService chemElementService;
-    private final UserRepository userRepository;
 
     @Autowired
-    public MyBot(ChemElementService chemElementService, UserService userService, ChemElementService chemElementService1, UserRepository userRepository) {
-        this.chemElementRepository = (ChemElementRepository) chemElementService;
+    public MyBot(UserService userService, ChemElementService chemElementService) {
         this.userService = userService;
-        this.chemElementService = chemElementService1;
-        this.userRepository = userRepository;
+        this.chemElementService = chemElementService;
     }
 
     public void onUpdateReceived(Update update) {

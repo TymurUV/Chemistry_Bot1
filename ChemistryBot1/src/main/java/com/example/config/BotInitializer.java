@@ -11,7 +11,8 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @Component
 @Slf4j
 public class BotInitializer {
-    private LongPollingBot bot;
+
+    LongPollingBot bot;
 
     public BotInitializer(LongPollingBot bot) {
         this.bot = bot;
@@ -23,7 +24,7 @@ public class BotInitializer {
         try {
             telegramBotsApi.registerBot(bot);
         } catch (TelegramApiException e) {
-            System.out.println("Error occurred: " + e.getMessage());
+            log.error("Error occurred: " + e.getMessage());
         }
     }
 }
