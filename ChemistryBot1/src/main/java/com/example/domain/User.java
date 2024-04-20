@@ -18,6 +18,11 @@ public class User {
     private Long id;
     @Column(name = "name")
     private String name;
+    @Column(name = "nickname")
+    private String nickname;
     @Column(name = "chat_id")
     private Long chatId;
+
+    @Enumerated(EnumType.STRING)
+    private Role role;
 }
