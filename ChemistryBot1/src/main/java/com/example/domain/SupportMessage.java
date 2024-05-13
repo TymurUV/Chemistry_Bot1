@@ -6,24 +6,26 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Entity
-@Table(name = "users")
+@Table(name = "support_message")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class SupportMessage {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "name")
-    private String name;
+    @Column(name = "message")
+    private String message;
     @Column(name = "nickname")
     private String nickname;
-    @Column(name = "chat_id")
+    @Column(name = "chatId")
     private Long chatId;
-
+    @Column(name = "date")
+    private Date date;
     @Enumerated(EnumType.STRING)
-    private Role role;
-
+    private Status status;
 }

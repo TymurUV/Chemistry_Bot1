@@ -7,23 +7,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "users")
 @Data
+@Table(name = "Scientists")
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class Scientist {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(name = "name")
     private String name;
-    @Column(name = "nickname")
-    private String nickname;
-    @Column(name = "chat_id")
-    private Long chatId;
-
-    @Enumerated(EnumType.STRING)
-    private Role role;
-
+    @Column(name = "year of death")
+    private int yearOfDeath;
+    @Column(name = "year of birth")
+    private int yearOfBirth;
+    @Column(name = "Discovered Element")
+    private String elementDiscovered;
 }

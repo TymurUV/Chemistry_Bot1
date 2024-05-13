@@ -1,7 +1,9 @@
 package com.example;
 
+import com.example.dto.SupportMessageDto;
 import com.example.dto.UserDto;
 import com.example.service.ChemElementService;
+import com.example.service.SupportMessageService;
 import com.example.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -14,9 +16,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Component
 @Slf4j
@@ -24,11 +24,15 @@ public class MyBot extends TelegramLongPollingBot {
 
     private final UserService userService;
     private final ChemElementService chemElementService;
+    private final SupportMessageService supportService;
+    private final Map<Long, Boolean> userCheck = new HashMap<>();
+
 
     @Autowired
-    public MyBot(UserService userService, ChemElementService chemElementService) {
+    public MyBot(UserService userService, ChemElementService chemElementService, SupportMessageService supportMessageService) {
         this.userService = userService;
         this.chemElementService = chemElementService;
+        this.supportService = supportMessageService;
     }
 
     @Override
@@ -40,6 +44,13 @@ public class MyBot extends TelegramLongPollingBot {
                 sendMsgToUser(chatId, "Welcome to the world of chemistry! \uD83E\uDDEA\uD83D\uDD2C \n " +
                         "Here you will find lots of fascinating facts, interesting experiments and useful knowledge about chemical elements. \n " +
                         "Welcome to our chemistry lab! \uD83D\uDCA1✨", List.of("Register"), 1);
+            } else if (message.equals("/help")) {
+                getHelp(chatId);
+            } else if (!message.isEmpty() && userCheck.containsKey(chatId)) {
+                if (userCheck.get(chatId)) {
+                    sendMsgToAdmin(chatId, message, update.getMessage().getFrom().getUserName());
+                    userCheck.put(chatId, false);
+                }
             }
         }
         if (update.hasCallbackQuery()) {
@@ -48,6 +59,9 @@ public class MyBot extends TelegramLongPollingBot {
             Long chatId = callbackQuery.getMessage().getChatId();
             if (callBackData.equals("Register")) {
                 registerUser(chatId, callbackQuery.getFrom().getFirstName(), callbackQuery.getFrom().getUserName());
+            } else if (callBackData.startsWith("Support")) {
+                userCheck.put(chatId, true);
+                sendMsgToUser(chatId, "Write down your message for admin", null, 0);
             }
         }
     }
@@ -57,6 +71,17 @@ public class MyBot extends TelegramLongPollingBot {
         Optional<UserDto> user = userService.findUserByChatId(chatId);
         return user.isPresent();
     }
+
+
+//    private boolean checkIfIdMatches(Long chatId) {
+//        if (chatId.equals(true)) {
+//            return true;
+//        } else {
+//            return false;
+//        }
+//
+//
+//    }
 
     private void sendMsgToUser(Long chatId, String message, List<String> textButton, int rows) {
         SendMessage sendMessage = new SendMessage();
@@ -82,12 +107,36 @@ public class MyBot extends TelegramLongPollingBot {
         userDto.setRole("USER");
 
         if (!isUserExist(chatId)) {
-            UserDto saveUser = userService.saveUser(userDto);
+            userService.saveUser(userDto);
             sendMsgToUser(chatId, "You successfully registered", null, 0);
 
         } else {
-            sendMsgToUser(chatId, "You've alredy registered in this Bot", null, 0);
+            sendMsgToUser(chatId, "You've already registered in this Bot", null, 0);
         }
+    }
+
+    private void getHelp(Long chatId) {
+        sendMsgToUser(chatId, "Hi! Here's a list of available commands: \n \n" +
+                        "/about - Learn more about the bot. \n " +
+                        "/experiments - Get a list of interesting chemical experiments. \n " +
+                        "/elements - Learn information about chemical elements. \n " +
+                        "/reactions - Learn about different chemical reactions. \n " +
+                        "/search [term] - Find information on a specific chemical term. \n \n " +
+                        "\uD83D\uDD2C\uD83D\uDCA1\uD83C\uDF1F If you have any questions or queries, feel free to get in touch!",
+                List.of("Support \uD83D\uDC68\uD83C\uDFFF\u200D\uD83D\uDCBB"), 1);
+
+    }
+
+    @Transactional
+    private void sendMsgToAdmin(Long chatId, String message, String nickname) {
+        SupportMessageDto supportMessageDto = new SupportMessageDto();
+        supportMessageDto.setMessage(message);
+        supportMessageDto.setDate(new Date());
+        supportMessageDto.setStatus("WAIT_FOR_REPLY");
+        supportMessageDto.setNickName(nickname);
+        supportMessageDto.setChatId(chatId);
+        supportService.saveSupportMessage(supportMessageDto);
+        sendMsgToUser(chatId, "your message successfully sent to Admin and you may proceed to further using our bot", null, 0);
     }
 
 
