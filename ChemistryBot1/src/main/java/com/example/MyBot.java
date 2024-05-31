@@ -146,7 +146,7 @@ public class MyBot extends TelegramLongPollingBot {
 
         }
         String builderString = stringBuilder.toString();
-        sendMsgToUser(chatId, supportMessages.toString(), null, 0);
+        sendMsgToUser(chatId, builderString, null, 0);
 
 
     }
