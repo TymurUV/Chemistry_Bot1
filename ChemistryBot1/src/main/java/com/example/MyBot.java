@@ -46,6 +46,8 @@ public class MyBot extends TelegramLongPollingBot {
                         "Welcome to our chemistry lab! \uD83D\uDCA1✨", List.of("Register"), 1);
             } else if (message.equals("/help")) {
                 getHelp(chatId);
+            } else if (message.equals("/sup")) {
+                getSupportMsgToAdmin(chatId);
             } else if (!message.isEmpty() && userCheck.containsKey(chatId)) {
                 if (userCheck.get(chatId)) {
                     sendMsgToAdmin(chatId, message, update.getMessage().getFrom().getUserName());
@@ -71,17 +73,6 @@ public class MyBot extends TelegramLongPollingBot {
         Optional<UserDto> user = userService.findUserByChatId(chatId);
         return user.isPresent();
     }
-
-
-//    private boolean checkIfIdMatches(Long chatId) {
-//        if (chatId.equals(true)) {
-//            return true;
-//        } else {
-//            return false;
-//        }
-//
-//
-//    }
 
     private void sendMsgToUser(Long chatId, String message, List<String> textButton, int rows) {
         SendMessage sendMessage = new SendMessage();
@@ -135,8 +126,34 @@ public class MyBot extends TelegramLongPollingBot {
         supportMessageDto.setStatus("WAIT_FOR_REPLY");
         supportMessageDto.setNickName(nickname);
         supportMessageDto.setChatId(chatId);
+
         supportService.saveSupportMessage(supportMessageDto);
         sendMsgToUser(chatId, "your message successfully sent to Admin and you may proceed to further using our bot", null, 0);
+    }
+
+    private void getSupportMsgToAdmin(Long chatId) {
+        List<SupportMessageDto> supportMessages = supportService.getAllMessages();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Support Messages: \n");
+        for (SupportMessageDto supportMessageDto : supportMessages) {
+            stringBuilder.append("Message Id: ").append(supportMessageDto.getId()).append("\n")
+                    .append("Message Context: ").append(supportMessageDto.getMessage()).append("\n")
+                    .append("Nickname: ").append(supportMessageDto.getNickName()).append("\n")
+                    .append("Chat Id: ").append(supportMessageDto.getChatId()).append("\n")
+                    .append("Status: ").append(supportMessageDto.getStatus()).append("\n")
+                    .append("Date: ").append(supportMessageDto.getDate()).append("\n")
+                    .append("----------------------");
+
+        }
+        String builderString = stringBuilder.toString();
+        sendMsgToUser(chatId, supportMessages.toString(), null, 0);
+
+
+    }
+
+    private boolean isUserAdmin(Long chatId) {
+        Optional<UserDto> userByChatId = userService.findUserByChatId(chatId);
+        return userByChatId.map(userDto -> userDto.getRole().equals("ADMIN")).orElse(false);
     }
 
 
