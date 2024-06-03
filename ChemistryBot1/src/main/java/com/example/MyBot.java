@@ -146,7 +146,11 @@ public class MyBot extends TelegramLongPollingBot {
 
         }
         String builderString = stringBuilder.toString();
-        sendMsgToUser(chatId, builderString, null, 0);
+        if (!isUserAdmin(chatId)) {
+            return;
+        } else {
+            sendMsgToUser(chatId, builderString, null, 0);
+        }
 
 
     }
