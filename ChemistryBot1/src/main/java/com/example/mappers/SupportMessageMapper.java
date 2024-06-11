@@ -2,8 +2,12 @@ package com.example.mappers;
 
 import com.example.domain.Status;
 import com.example.domain.SupportMessage;
+import com.example.domain.UserChatInfo;
 import com.example.dto.SupportMessageDto;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class SupportMessageMapper {
@@ -27,5 +31,9 @@ public class SupportMessageMapper {
         supportMessage.setDate(supportMessageDto.getDate());
         supportMessage.setStatus(Status.valueOf(supportMessageDto.getStatus()));
         return supportMessage;
+    }
+
+    public static List<UserChatInfo> toUserChatInfo(List<SupportMessageDto> supportMessageDtos) {
+        return supportMessageDtos.stream().map(a -> new UserChatInfo(a.getChatId(), a.getNickName())).collect(Collectors.toList());
     }
 }

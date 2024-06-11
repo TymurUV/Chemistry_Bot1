@@ -1,7 +1,9 @@
 package com.example;
 
+import com.example.domain.UserChatInfo;
 import com.example.dto.SupportMessageDto;
 import com.example.dto.UserDto;
+import com.example.mappers.SupportMessageMapper;
 import com.example.service.ChemElementService;
 import com.example.service.SupportMessageService;
 import com.example.service.UserService;
@@ -17,6 +19,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -64,8 +67,8 @@ public class MyBot extends TelegramLongPollingBot {
             } else if (callBackData.startsWith("Support")) {
                 userCheck.put(chatId, true);
                 sendMsgToUser(chatId, "Write down your message for admin", null, 0);
-            } else if (callBackData.startsWith("")) {
-                
+            } else if (callBackData.equals("the button has been pressed")) {
+                getSupportMsgToAdmin(chatId);
             }
         }
     }
@@ -135,7 +138,7 @@ public class MyBot extends TelegramLongPollingBot {
 
     private void getSupportMsgToAdmin(Long chatId) {
         List<SupportMessageDto> supportMessages = supportService.getAllMessages();
-        
+        List<UserChatInfo> userChatInfos = SupportMessageMapper.toUserChatInfo(supportMessages);
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("Support Messages: \n");
         for (SupportMessageDto supportMessageDto : supportMessages) {
@@ -150,7 +153,7 @@ public class MyBot extends TelegramLongPollingBot {
         String builderString = stringBuilder.toString();
         sendMsgToUser(chatId, builderString, supportMessages.stream().map(user -> user.getChatId().toString()).toList(), supportMessages.size());
     }
-
+//supportMessages.stream().map(a -> new UserChatInfo(a.getChatId(), a.getNickName())).collect(Collectors.toList());
 
     private boolean isUserAdmin(Long chatId) {
         Optional<UserDto> userByChatId = userService.findUserByChatId(chatId);

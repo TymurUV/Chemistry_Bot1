@@ -1,36 +1,19 @@
 package com.example.domain;
 
+import jakarta.persistence.Entity;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserChatInfo {
-    private static final String buttonPressed = "button_pressed";
+    private final String buttonPressed = "the button has been pressed";
     private Long chatId;
     private String nickname;
 
-    public UserChatInfo(Long chatId, String nickname) {
-        this.chatId = chatId;
-        this.nickname = nickname;
-    }
-
-    public Long getChatId() {
-        return chatId;
-    }
-
-    public void setChatId(Long chatId) {
-        this.chatId = chatId;
-    }
-
-    public String getNickname() {
-        return nickname;
-    }
-
-    public void setNickname(String nickname) {
-        this.nickname = nickname;
-    }
-
-    @Override
-    public String toString() {
-        return "UserChatInfo{" +
-                "chatId=" + chatId +
-                ", nickname='" + nickname + '\'' +
-                '}';
-    }
 }
