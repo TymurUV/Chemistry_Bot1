@@ -52,6 +52,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Long getUserChatId(Long chatId) {
+        return chatId;
+    }
+
+    @Override
     public List<UserDto> getAllUsers() {
         List<User> userList = userRepository.findAll();
         return userList.stream()

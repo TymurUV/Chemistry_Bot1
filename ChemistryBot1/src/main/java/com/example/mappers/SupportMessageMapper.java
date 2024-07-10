@@ -6,9 +6,6 @@ import com.example.domain.UserChatInfo;
 import com.example.dto.SupportMessageDto;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Component
 public class SupportMessageMapper {
     public SupportMessageDto toDto(SupportMessage supportMessage) {
@@ -33,7 +30,12 @@ public class SupportMessageMapper {
         return supportMessage;
     }
 
-    public static List<UserChatInfo> toUserChatInfo(List<SupportMessageDto> supportMessageDtos) {
-        return supportMessageDtos.stream().map(a -> new UserChatInfo(a.getChatId(), a.getNickName())).collect(Collectors.toList());
+    public static UserChatInfo toUserChatInfo(SupportMessageDto supportMessageDto) {
+        UserChatInfo userChatInfo = new UserChatInfo();
+        userChatInfo.setChatId(supportMessageDto.getChatId());
+        userChatInfo.setNickname(supportMessageDto.getNickName());
+        return userChatInfo;
+
     }
+//    supportMessageDtos.stream().map(a -> new UserChatInfo(a.getChatId(), a.getNickName())).collect(Collectors.toList());
 }

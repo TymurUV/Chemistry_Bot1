@@ -1,6 +1,5 @@
 package com.example.service;
 
-import com.example.domain.User;
 import com.example.dto.UserDto;
 
 import java.util.List;
@@ -12,6 +11,8 @@ public interface UserService {
     UserDto updateUserById(Long id, UserDto userDto);
 
     UserDto getUserById(Long id);
+
+    Long getUserChatId(Long chatId);
 
     List<UserDto> getAllUsers();
 

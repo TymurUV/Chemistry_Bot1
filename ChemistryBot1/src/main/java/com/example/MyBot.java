@@ -1,9 +1,9 @@
 package com.example;
 
-import com.example.domain.UserChatInfo;
 import com.example.dto.SupportMessageDto;
 import com.example.dto.UserDto;
 import com.example.mappers.SupportMessageMapper;
+import com.example.repository.SupportMessageRepository;
 import com.example.service.ChemElementService;
 import com.example.service.SupportMessageService;
 import com.example.service.UserService;
@@ -19,7 +19,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -29,13 +28,15 @@ public class MyBot extends TelegramLongPollingBot {
     private final ChemElementService chemElementService;
     private final SupportMessageService supportService;
     private final Map<Long, Boolean> userCheck = new HashMap<>();
-
+    private final Map<Long, Long> responseCheck = new HashMap<>();
+    private final Map<Long, String> negativeUserReviews = new HashMap<>();
 
     @Autowired
-    public MyBot(UserService userService, ChemElementService chemElementService, SupportMessageService supportMessageService) {
+    public MyBot(UserService userService, ChemElementService chemElementService, SupportMessageService supportMessageService, SupportMessageRepository supRep, SupportMessageMapper supportMessageMapper) {
         this.userService = userService;
         this.chemElementService = chemElementService;
         this.supportService = supportMessageService;
+
     }
 
     @Override
@@ -43,6 +44,7 @@ public class MyBot extends TelegramLongPollingBot {
         if (update.hasMessage() && update.getMessage().hasText()) {
             String message = update.getMessage().getText();
             Long chatId = update.getMessage().getChatId();
+            String nickname = update.getMessage().getForwardSenderName();
             if (message.equals("/start")) {
                 sendMsgToUser(chatId, "Welcome to the world of chemistry! \uD83E\uDDEA\uD83D\uDD2C \n " +
                         "Here you will find lots of fascinating facts, interesting experiments and useful knowledge about chemical elements. \n " +
@@ -53,9 +55,16 @@ public class MyBot extends TelegramLongPollingBot {
                 getSupportMsgToAdmin(chatId);
             } else if (!message.isEmpty() && userCheck.containsKey(chatId)) {
                 if (userCheck.get(chatId)) {
-                    sendMsgToAdmin(chatId, message, update.getMessage().getFrom().getUserName());
+                    saveSupportMessage(chatId, message, update.getMessage().getFrom().getUserName());
                     userCheck.put(chatId, false);
                 }
+            } else if (!message.isEmpty() && responseCheck.containsKey(chatId)) {
+                if (!responseCheck.get(chatId).equals(0L)) {
+                    sendMsgToUser(responseCheck.get(chatId), message, List.of("✔", "❌"), 1);
+                    responseCheck.put(chatId, 0L);
+                }
+            } else if (!message.isEmpty() && negativeUserReviews.containsKey(chatId)) {
+                sendMsgToUser(chatId, "User: " + nickname + " didn't like our admins response", null, 0 );
             }
         }
         if (update.hasCallbackQuery()) {
@@ -67,9 +76,17 @@ public class MyBot extends TelegramLongPollingBot {
             } else if (callBackData.startsWith("Support")) {
                 userCheck.put(chatId, true);
                 sendMsgToUser(chatId, "Write down your message for admin", null, 0);
-            } else if (callBackData.equals("the button has been pressed")) {
-                getSupportMsgToAdmin(chatId);
+            } else if (callBackData.startsWith("User")) {
+                Long userChatIdForResponse = Long.valueOf(callBackData.replaceAll("\\D", ""));
+                responseCheck.put(chatId, userChatIdForResponse);
+                sendMsgToUser(chatId, "Write response to message: " + supportService.findMessageByChatId(chatId).get().getMessage(), null, 0);
+            } else if (callBackData.equals("✔")) {
+                supportService.deleteMessage(supportService.findMessageByChatId(chatId).get().getId());
+            } else if (callBackData.equals("❌")) {
+                sendMsgToUser(chatId, "Write your message", null, 0);
+                userCheck.put(chatId, true);
             }
+
         }
     }
 
@@ -78,6 +95,7 @@ public class MyBot extends TelegramLongPollingBot {
         Optional<UserDto> user = userService.findUserByChatId(chatId);
         return user.isPresent();
     }
+
 
     private void sendMsgToUser(Long chatId, String message, List<String> textButton, int rows) {
         SendMessage sendMessage = new SendMessage();
@@ -124,7 +142,7 @@ public class MyBot extends TelegramLongPollingBot {
     }
 
     @Transactional
-    private void sendMsgToAdmin(Long chatId, String message, String nickname) {
+    private void saveSupportMessage(Long chatId, String message, String nickname) {
         SupportMessageDto supportMessageDto = new SupportMessageDto();
         supportMessageDto.setMessage(message);
         supportMessageDto.setDate(new Date());
@@ -136,9 +154,9 @@ public class MyBot extends TelegramLongPollingBot {
         sendMsgToUser(chatId, "your message successfully sent to Admin and you may proceed to further using our bot", null, 0);
     }
 
+
     private void getSupportMsgToAdmin(Long chatId) {
         List<SupportMessageDto> supportMessages = supportService.getAllMessages();
-        List<UserChatInfo> userChatInfos = SupportMessageMapper.toUserChatInfo(supportMessages);
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append("Support Messages: \n");
         for (SupportMessageDto supportMessageDto : supportMessages) {
@@ -151,9 +169,9 @@ public class MyBot extends TelegramLongPollingBot {
 
         }
         String builderString = stringBuilder.toString();
-        sendMsgToUser(chatId, builderString, supportMessages.stream().map(user -> user.getChatId().toString()).toList(), supportMessages.size());
+        sendMsgToUser(chatId, builderString, supportMessages.stream().map(supMsg -> SupportMessageMapper.toUserChatInfo(supMsg).toString()).toList(), supportMessages.size());
     }
-//supportMessages.stream().map(a -> new UserChatInfo(a.getChatId(), a.getNickName())).collect(Collectors.toList());
+
 
     private boolean isUserAdmin(Long chatId) {
         Optional<UserDto> userByChatId = userService.findUserByChatId(chatId);

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SupportMsgImpl implements SupportMessageService {
@@ -51,4 +52,13 @@ public class SupportMsgImpl implements SupportMessageService {
         supportMessage.setStatus(Status.valueOf(supportMessageDto.getStatus()));
         return mapper.toDto(supRep.save(supportMessage));
     }
+
+    @Override
+    public Optional<SupportMessageDto> findMessageByChatId(Long chatId) {
+        List<SupportMessage> msgChatId = supRep.getSupportMsgByChatId(chatId);
+        return msgChatId.stream().map(mapper::toDto).findFirst();
+    }
 }
+
+
+
