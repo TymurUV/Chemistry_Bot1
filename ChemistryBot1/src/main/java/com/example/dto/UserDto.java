@@ -1,6 +1,6 @@
 package com.example.dto;
 
-import com.example.domain.Role;
+import com.example.domain.UserStatus;
 import lombok.Data;
 
 @Data
@@ -10,4 +10,5 @@ public class UserDto {
     private String nickname;
     private Long chatId;
     private String role;
+    private UserStatus status;
 }

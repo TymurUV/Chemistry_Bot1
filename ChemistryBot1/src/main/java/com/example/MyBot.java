@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.domain.UserStatus;
 import com.example.dto.SupportMessageDto;
 import com.example.dto.UserDto;
 import com.example.mappers.SupportMessageMapper;
@@ -27,7 +28,6 @@ public class MyBot extends TelegramLongPollingBot {
     private final UserService userService;
     private final ChemElementService chemElementService;
     private final SupportMessageService supportService;
-    private final Map<Long, Boolean> userCheck = new HashMap<>();
     private final Map<Long, Long> responseCheck = new HashMap<>();
     private final Map<Long, String> helpRequests = new HashMap<>();
 
@@ -76,14 +76,18 @@ public class MyBot extends TelegramLongPollingBot {
     }
 
     private void processUserMessage(Long chatId, String message, String username) {
-        if (userCheck.containsKey(chatId) && userCheck.get(chatId)) {
-            saveOrUpdateSupMsg(chatId, message, username);
-            userCheck.put(chatId, false);
-        } else if (responseCheck.containsKey(chatId) && !responseCheck.get(chatId).equals(0L)) {
-            sendMsgToUser(responseCheck.get(chatId), message);
-            sendMsgToUser(chatId, "Select ", List.of("✔️", "❌"), 1);
-            responseCheck.put(chatId, 0L);
-        }
+        Optional<UserDto> userByChatId = userService.findUserByChatId(chatId);
+        userByChatId.ifPresent(
+                userDto -> {
+                    if (userDto.getStatus() == UserStatus.WANT_WRITE_MSG) {
+                        saveOrUpdateSupMsg(chatId, message, username);
+                        userService.updateStatusByChatId(chatId, UserStatus.BASIC);
+                    } else if (responseCheck.containsKey(chatId) && !responseCheck.get(chatId).equals(0L)) {
+                        sendMsgToUser(responseCheck.get(chatId), message);
+                        sendMsgToUser(chatId, "Select ", List.of("✔️", "❌"), 1);
+                        responseCheck.put(chatId, 0L);
+                    }
+                });
     }
 
     private void handleCallbackQuery(CallbackQuery callbackQuery) {
@@ -135,7 +139,7 @@ public class MyBot extends TelegramLongPollingBot {
     }
 
     private void promptUserForSupportMessage(Long chatId) {
-        userCheck.put(chatId, true);
+        userService.updateStatusByChatId(chatId, UserStatus.WANT_WRITE_MSG);
         sendMsgToUser(chatId, "Write down your message for admin");
     }
 
@@ -174,11 +178,13 @@ public class MyBot extends TelegramLongPollingBot {
 
     @Transactional
     private void registerUser(Long chatId, String name, String nickname) {
+        //TODO: fix order code
         UserDto userDto = new UserDto();
         userDto.setChatId(chatId);
         userDto.setName(name);
         userDto.setNickname(nickname);
         userDto.setRole("USER");
+        userDto.setStatus(UserStatus.BASIC);
 
         if (!isUserExist(chatId)) {
             userService.saveUser(userDto);

@@ -14,6 +14,7 @@ public class UserMapper {
         userDto.setNickname(user.getNickname());
         userDto.setChatId(user.getChatId());
         userDto.setRole(String.valueOf(user.getRole()));
+        userDto.setStatus(user.getStatus());
         return userDto;
     }
 
@@ -24,6 +25,7 @@ public class UserMapper {
         user.setNickname(userDto.getNickname());
         user.setChatId(userDto.getChatId());
         user.setRole(Role.valueOf(userDto.getRole().toUpperCase()));
+        user.setStatus(userDto.getStatus());
         return user;
     }
 

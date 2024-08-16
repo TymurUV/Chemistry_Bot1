@@ -1,6 +1,7 @@
 package com.example.service.impl;
 
 import com.example.domain.User;
+import com.example.domain.UserStatus;
 import com.example.dto.UserDto;
 import com.example.mappers.UserMapper;
 import com.example.repository.UserRepository;
@@ -52,9 +53,16 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Long getUserChatId(Long chatId) {
-        return chatId;
+    public UserDto updateStatusByChatId(Long chatId, UserStatus status) {
+        Optional<UserDto> userByChatId = findUserByChatId(chatId);
+        if (userByChatId.isPresent()) {
+            UserDto userDto = userByChatId.get();
+            userDto.setStatus(status);
+            return userDto;
+        }
+        return null;
     }
+
 
     @Override
     public List<UserDto> getAllUsers() {
