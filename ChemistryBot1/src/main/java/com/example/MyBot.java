@@ -39,62 +39,104 @@ public class MyBot extends TelegramLongPollingBot {
 
     }
 
+
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            String message = update.getMessage().getText();
-            Long chatId = update.getMessage().getChatId();
-            String nickname = update.getMessage().getFrom().getUserName();
-            if (message.equals("/start")) {
-                sendMsgToUser(chatId, "Welcome to the world of chemistry! \uD83E\uDDEA\uD83D\uDD2C \n " +
-                        "Here you will find lots of fascinating facts, interesting experiments and useful knowledge about chemical elements. \n " +
-                        "Welcome to our chemistry lab! \uD83D\uDCA1✨", List.of("Register"), 1);
-            } else if (message.equals("/help")) {
-                getHelp(chatId);
-            } else if (message.equals("/sup") && isUserAdmin(chatId)) {
-                getSupportMsgToAdmin(chatId);
-            } else if (!message.isEmpty() && userCheck.containsKey(chatId)) {
-                if (userCheck.get(chatId)) {
-                    saveSupportMessage(chatId, message, update.getMessage().getFrom().getUserName());
-                    userCheck.put(chatId, false);
-                }
-            } else if (!message.isEmpty() && responseCheck.containsKey(chatId)) {
-                if (!responseCheck.get(chatId).equals(0L)) {
-                    sendMsgToUser(responseCheck.get(chatId), message, List.of("✔", "❌"), 1);
-                    responseCheck.put(chatId, 0L);
-                }
-            }
+            handleIncomingMessage(update);
         }
-        if (update.hasCallbackQuery()) {
-            CallbackQuery callbackQuery = update.getCallbackQuery();
-            String callBackData = callbackQuery.getData();
-            Long chatId = callbackQuery.getMessage().getChatId();
-            if (callBackData.equals("Register")) {
-                registerUser(chatId, callbackQuery.getFrom().getFirstName(), callbackQuery.getFrom().getUserName());
-            } else if (callBackData.startsWith("Support")) {
-                if (!isUserWriteSupportMessage(chatId)) {
-                    promptUserForSupportMessage(chatId);
-                } else {
-                    sendMsgToUser(chatId, "You already have message sent to admin:" + supportService.findMessageByChatId(chatId).get().getMessage() + "\nDo you want to update it?", List.of("Update Message", "Let it be"), 1);
-                }
-            } else if (callBackData.startsWith("Update Message")) {
-                promptUserForSupportMessage(chatId);
-            } else if (callBackData.startsWith("User")) {
-                Long userChatIdForResponse = Long.valueOf(callBackData.replaceAll("\\D", ""));
-                responseCheck.put(chatId, userChatIdForResponse);
-                sendMsgToUser(chatId, "Write response to message: " + supportService.findMessageByChatId(userChatIdForResponse).get().getMessage(), null, 0);
-            } else if (callBackData.equals("✔")) {
-                supportService.deleteMessage(supportService.findMessageByChatId(chatId).get().getId());
-            } else if (callBackData.equals("❌")) {
-                sendMsgToUser(1052235587L, "User with nickname: @" + userService.findUserByChatId(chatId).get().getNickname() + "\nMessage: " + supportService.findMessageByChatId(chatId).get().getMessage(), null, 0);
-            }
 
+        if (update.hasCallbackQuery()) {
+            handleCallbackQuery(update.getCallbackQuery());
         }
+    }
+
+    private void handleIncomingMessage(Update update) {
+        String message = update.getMessage().getText();
+        Long chatId = update.getMessage().getChatId();
+
+        switch (message) {
+            case "/start" -> sendWelcomeMessage(chatId);
+            case "/help" -> getHelp(chatId);
+            case "/sup" -> {
+                if (isUserAdmin(chatId)) {
+                    getSupportMsgToAdmin(chatId);
+                }
+            }
+            default -> processUserMessage(chatId, message, update.getMessage().getFrom().getUserName());
+        }
+    }
+
+    private void sendWelcomeMessage(Long chatId) {
+        String welcomeText = "Welcome to the world of chemistry! \uD83E\uDDEA\uD83D\uDD2C\n" +
+                "Here you will find lots of fascinating facts, interesting experiments and useful knowledge about chemical elements.\n" +
+                "Welcome to our chemistry lab! \uD83D\uDCA1✨";
+        sendMsgToUser(chatId, welcomeText);
+        sendMsgToUser(chatId, "Select ", List.of("Register"), 1);
+    }
+
+    private void processUserMessage(Long chatId, String message, String username) {
+        if (userCheck.containsKey(chatId) && userCheck.get(chatId)) {
+            saveOrUpdateSupMsg(chatId, message, username);
+            userCheck.put(chatId, false);
+        } else if (responseCheck.containsKey(chatId) && !responseCheck.get(chatId).equals(0L)) {
+            sendMsgToUser(responseCheck.get(chatId), message);
+            sendMsgToUser(chatId, "Select ", List.of("✔️", "❌"), 1);
+            responseCheck.put(chatId, 0L);
+        }
+    }
+
+    private void handleCallbackQuery(CallbackQuery callbackQuery) {
+        String callBackData = callbackQuery.getData();
+        Long chatId = callbackQuery.getMessage().getChatId();
+
+        switch (callBackData) {
+            case "Register" ->
+                    registerUser(chatId, callbackQuery.getFrom().getFirstName(), callbackQuery.getFrom().getUserName());
+            case "Update Message" -> promptUserForSupportMessage(chatId);
+            case "✔️" -> deleteSupportMessage(chatId);
+            case "❌" -> notifyAdminAboutUser(chatId);
+            default -> {
+                if (callBackData.startsWith("Support")) {
+                    handleSupportCallback(chatId);
+                } else if (callBackData.startsWith("User")) {
+                    handleUserResponseCallback(chatId, callBackData);
+                }
+            }
+        }
+    }
+
+    private void handleSupportCallback(Long chatId) {
+        if (!isUserWriteSupportMessage(chatId)) {
+            promptUserForSupportMessage(chatId);
+        } else {
+            String existingMessage = supportService.findMessageByChatId(chatId).get().getMessage();
+            sendMsgToUser(chatId, "You already have message sent to admin: " + existingMessage + "\nDo you want to update it?");
+            sendMsgToUser(chatId, "Select ", List.of("Update Message", "Let it be"), 1);
+        }
+    }
+
+    private void handleUserResponseCallback(Long chatId, String callBackData) {
+        Long userChatIdForResponse = Long.valueOf(callBackData.replaceAll("\\D", ""));
+        responseCheck.put(chatId, userChatIdForResponse);
+        String userMessage = supportService.findMessageByChatId(userChatIdForResponse).get().getMessage();
+        sendMsgToUser(chatId, "Write response to message: " + userMessage);
+    }
+
+    private void deleteSupportMessage(Long chatId) {
+        supportService.deleteMessage(supportService.findMessageByChatId(chatId).get().getId());
+    }
+
+
+    private void notifyAdminAboutUser(Long chatId) {
+        String nickname = userService.findUserByChatId(chatId).get().getNickname();
+        String message = supportService.findMessageByChatId(chatId).get().getMessage();
+        sendMsgToUser(1052235587L, "User with nickname: @" + nickname + "\nMessage: " + message);
     }
 
     private void promptUserForSupportMessage(Long chatId) {
         userCheck.put(chatId, true);
-        sendMsgToUser(chatId, "Write down your message for admin", null, 0);
+        sendMsgToUser(chatId, "Write down your message for admin");
     }
 
 
@@ -104,14 +146,25 @@ public class MyBot extends TelegramLongPollingBot {
     }
 
 
+    private void sendMsgToUser(Long chatId, String message) {
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(message);
+        try {
+            execute(sendMessage);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private void sendMsgToUser(Long chatId, String message, List<String> textButton, int rows) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
         sendMessage.setText(message);
-        if (textButton != null) {
-            InlineKeyboardMarkup inlineKeyboardMarkup = createCustomKeyboard(textButton, rows);
-            sendMessage.setReplyMarkup(inlineKeyboardMarkup);
-        }
+
+        InlineKeyboardMarkup inlineKeyboardMarkup = createCustomKeyboard(textButton, rows);
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+
         try {
             execute(sendMessage);
         } catch (Exception e) {
@@ -129,36 +182,42 @@ public class MyBot extends TelegramLongPollingBot {
 
         if (!isUserExist(chatId)) {
             userService.saveUser(userDto);
-            sendMsgToUser(chatId, "You successfully registered", null, 0);
+            sendMsgToUser(chatId, "You successfully registered");
 
         } else {
-            sendMsgToUser(chatId, "You've already registered in this Bot", null, 0);
+            sendMsgToUser(chatId, "You've already registered in this Bot");
         }
     }
 
     private void getHelp(Long chatId) {
         sendMsgToUser(chatId, "Hi! Here's a list of available commands: \n \n" +
-                        "/about - Learn more about the bot. \n " +
-                        "/experiments - Get a list of interesting chemical experiments. \n " +
-                        "/elements - Learn information about chemical elements. \n " +
-                        "/reactions - Learn about different chemical reactions. \n " +
-                        "/search [term] - Find information on a specific chemical term. \n \n " +
-                        "\uD83D\uDD2C\uD83D\uDCA1\uD83C\uDF1F If you have any questions or queries, feel free to get in touch!",
-                List.of("Support \uD83D\uDC68\uD83C\uDFFF\u200D\uD83D\uDCBB"), 1);
+                "/about - Learn more about the bot. \n " +
+                "/experiments - Get a list of interesting chemical experiments. \n " +
+                "/elements - Learn information about chemical elements. \n " +
+                "/reactions - Learn about different chemical reactions. \n " +
+                "/search [term] - Find information on a specific chemical term. \n \n " +
+                "\uD83D\uDD2C\uD83D\uDCA1\uD83C\uDF1F If you have any questions or queries, feel free to get in touch!");
+        sendMsgToUser(chatId, "Select ", List.of("Support \uD83D\uDC68\uD83C\uDFFF\u200D\uD83D\uDCBB"), 1);
 
     }
 
     @Transactional
-    private void saveSupportMessage(Long chatId, String message, String nickname) {
-        SupportMessageDto supportMessageDto = new SupportMessageDto();
-        supportMessageDto.setMessage(message);
-        supportMessageDto.setDate(new Date());
-        supportMessageDto.setStatus("WAIT_FOR_REPLY");
-        supportMessageDto.setNickName(nickname);
-        supportMessageDto.setChatId(chatId);
-
-        supportService.saveSupportMessage(supportMessageDto);
-        sendMsgToUser(chatId, "your message successfully sent to Admin and you may proceed to further using our bot", null, 0);
+    private void saveOrUpdateSupMsg(Long chatId, String message, String nickname) {
+        if (supportService.findMessageByChatId(chatId).isEmpty()) {
+            SupportMessageDto supportMessageDto = new SupportMessageDto();
+            supportMessageDto.setMessage(message);
+            supportMessageDto.setDate(new Date());
+            supportMessageDto.setStatus("WAIT_FOR_REPLY");
+            supportMessageDto.setNickName(nickname);
+            supportMessageDto.setChatId(chatId);
+            supportService.saveSupportMessage(supportMessageDto);
+        } else {
+            SupportMessageDto supportMessageDto = supportService.findMessageByChatId(chatId).get();
+            supportMessageDto.setMessage(message);
+            supportMessageDto.setDate(new Date());
+            supportService.updateMessage(supportMessageDto, supportMessageDto.getId());
+        }
+        sendMsgToUser(chatId, "your message successfully sent to Admin and you may proceed to further using our bot");
     }
 
     private boolean isUserWriteSupportMessage(Long chatId) {
@@ -181,7 +240,8 @@ public class MyBot extends TelegramLongPollingBot {
 
         }
         String builderString = stringBuilder.toString();
-        sendMsgToUser(chatId, builderString, supportMessages.stream().map(supMsg -> SupportMessageMapper.toUserChatInfo(supMsg).toString()).toList(), supportMessages.size());
+        sendMsgToUser(chatId, builderString);
+        sendMsgToUser(chatId, "Select", supportMessages.stream().map(supMsg -> SupportMessageMapper.toUserChatInfo(supMsg).toString()).toList(), supportMessages.size());
     }
 
 

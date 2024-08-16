@@ -1,6 +1,6 @@
 package com.example.mappers;
 
-import com.example.domain.Status;
+import com.example.domain.MsgStatus;
 import com.example.domain.SupportMessage;
 import com.example.domain.UserChatInfo;
 import com.example.dto.SupportMessageDto;
@@ -15,7 +15,7 @@ public class SupportMessageMapper {
         supportMessageDto.setNickName(supportMessage.getNickname());
         supportMessageDto.setChatId(supportMessage.getChatId());
         supportMessageDto.setDate(supportMessage.getDate());
-        supportMessageDto.setStatus(String.valueOf(supportMessage.getStatus()));
+        supportMessageDto.setStatus(String.valueOf(supportMessage.getMsgStatus()));
         return supportMessageDto;
     }
 
@@ -26,7 +26,7 @@ public class SupportMessageMapper {
         supportMessage.setMessage(supportMessageDto.getMessage());
         supportMessage.setChatId(supportMessageDto.getChatId());
         supportMessage.setDate(supportMessageDto.getDate());
-        supportMessage.setStatus(Status.valueOf(supportMessageDto.getStatus()));
+        supportMessage.setMsgStatus(MsgStatus.valueOf(supportMessageDto.getStatus()));
         return supportMessage;
     }
 

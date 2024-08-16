@@ -27,5 +27,5 @@ public class SupportMessage {
     @Column(name = "date")
     private Date date;
     @Enumerated(EnumType.STRING)
-    private Status status;
+    private MsgStatus msgStatus;
 }

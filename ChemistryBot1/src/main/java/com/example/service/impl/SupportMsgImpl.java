@@ -1,6 +1,6 @@
 package com.example.service.impl;
 
-import com.example.domain.Status;
+import com.example.domain.MsgStatus;
 import com.example.domain.SupportMessage;
 import com.example.dto.SupportMessageDto;
 import com.example.mappers.SupportMessageMapper;
@@ -49,7 +49,7 @@ public class SupportMsgImpl implements SupportMessageService {
         supportMessage.setDate(supportMessageDto.getDate());
         supportMessage.setNickname(supportMessageDto.getNickName());
         supportMessage.setChatId(supportMessageDto.getChatId());
-        supportMessage.setStatus(Status.valueOf(supportMessageDto.getStatus()));
+        supportMessage.setMsgStatus(MsgStatus.valueOf(supportMessageDto.getStatus()));
         return mapper.toDto(supRep.save(supportMessage));
     }
 
