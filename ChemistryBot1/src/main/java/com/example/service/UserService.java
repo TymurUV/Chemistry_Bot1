@@ -1,5 +1,6 @@
 package com.example.service;
 
+import com.example.domain.AdminStatus;
 import com.example.domain.UserStatus;
 import com.example.dto.UserDto;
 
@@ -14,6 +15,8 @@ public interface UserService {
     UserDto getUserById(Long id);
 
     UserDto updateStatusByChatId(Long chatId, UserStatus status);
+
+    UserDto updateAdminStatusByChatId(Long chatId, AdminStatus status, Long tempChatId);
 
     List<UserDto> getAllUsers();
 

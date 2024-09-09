@@ -11,6 +11,6 @@ public class UserChatInfo {
 
     @Override
     public String toString() {
-        return USER + ": " + nickname + " " + chatId;
+        return USER + ": " + chatId;
     }
 }

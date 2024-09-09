@@ -1,5 +1,6 @@
 package com.example.service.impl;
 
+import com.example.domain.AdminStatus;
 import com.example.domain.User;
 import com.example.domain.UserStatus;
 import com.example.dto.UserDto;
@@ -58,6 +59,20 @@ public class UserServiceImpl implements UserService {
         if (userByChatId.isPresent()) {
             UserDto userDto = userByChatId.get();
             userDto.setStatus(status);
+            userRepository.save(userMapper.toEntity(userDto));
+            return userDto;
+        }
+        return null;
+    }
+
+    @Override
+    public UserDto updateAdminStatusByChatId(Long chatId, AdminStatus status, Long tempChatId) {
+        Optional<UserDto> userByChatId = findUserByChatId(chatId);
+        if (userByChatId.isPresent()) {
+            UserDto userDto = userByChatId.get();
+            userDto.setTempChatIdForReply(tempChatId);
+            userDto.setAdminStatus(status);
+            userRepository.save(userMapper.toEntity(userDto));
             return userDto;
         }
         return null;

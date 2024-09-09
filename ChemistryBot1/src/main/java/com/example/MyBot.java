@@ -1,5 +1,6 @@
 package com.example;
 
+import com.example.domain.AdminStatus;
 import com.example.domain.UserStatus;
 import com.example.dto.SupportMessageDto;
 import com.example.dto.UserDto;
@@ -14,12 +15,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
 @Component
 @Slf4j
@@ -28,8 +33,7 @@ public class MyBot extends TelegramLongPollingBot {
     private final UserService userService;
     private final ChemElementService chemElementService;
     private final SupportMessageService supportService;
-    private final Map<Long, Long> responseCheck = new HashMap<>();
-    private final Map<Long, String> helpRequests = new HashMap<>();
+
 
     @Autowired
     public MyBot(UserService userService, ChemElementService chemElementService, SupportMessageService supportMessageService, SupportMessageRepository supRep, SupportMessageMapper supportMessageMapper) {
@@ -82,12 +86,14 @@ public class MyBot extends TelegramLongPollingBot {
                     if (userDto.getStatus() == UserStatus.WANT_WRITE_MSG) {
                         saveOrUpdateSupMsg(chatId, message, username);
                         userService.updateStatusByChatId(chatId, UserStatus.BASIC);
-                    } else if (responseCheck.containsKey(chatId) && !responseCheck.get(chatId).equals(0L)) {
-                        sendMsgToUser(responseCheck.get(chatId), message);
-                        sendMsgToUser(chatId, "Select ", List.of("✔️", "❌"), 1);
-                        responseCheck.put(chatId, 0L);
+                    } else if (userDto.getAdminStatus() == AdminStatus.ADMIN_WANT_TO_REPLY) {
+                        Long tempChatIdForReply = userService.findUserByChatId(chatId).get().getTempChatIdForReply();
+                        sendMsgToUser(tempChatIdForReply, message);
+                        sendMsgToUser(tempChatIdForReply, "Select ", List.of("✔️", "❌"), 1);
+                        userService.updateAdminStatusByChatId(chatId, AdminStatus.ADMIN_BASIC, 0L);
                     }
                 });
+//
     }
 
     private void handleCallbackQuery(CallbackQuery callbackQuery) {
@@ -96,7 +102,7 @@ public class MyBot extends TelegramLongPollingBot {
 
         switch (callBackData) {
             case "Register" ->
-                    registerUser(chatId, callbackQuery.getFrom().getFirstName(), callbackQuery.getFrom().getUserName());
+                    registerUser(chatId, callbackQuery.getFrom().getFirstName(), callbackQuery.getFrom().getUserName(), callbackQuery.getMessage().getMessageId());
             case "Update Message" -> promptUserForSupportMessage(chatId);
             case "✔️" -> deleteSupportMessage(chatId);
             case "❌" -> notifyAdminAboutUser(chatId);
@@ -122,7 +128,8 @@ public class MyBot extends TelegramLongPollingBot {
 
     private void handleUserResponseCallback(Long chatId, String callBackData) {
         Long userChatIdForResponse = Long.valueOf(callBackData.replaceAll("\\D", ""));
-        responseCheck.put(chatId, userChatIdForResponse);
+        userService.updateAdminStatusByChatId(chatId, AdminStatus.ADMIN_WANT_TO_REPLY, userChatIdForResponse);
+        System.out.println(userChatIdForResponse);
         String userMessage = supportService.findMessageByChatId(userChatIdForResponse).get().getMessage();
         sendMsgToUser(chatId, "Write response to message: " + userMessage);
     }
@@ -147,6 +154,32 @@ public class MyBot extends TelegramLongPollingBot {
     private boolean isUserExist(Long chatId) {
         Optional<UserDto> user = userService.findUserByChatId(chatId);
         return user.isPresent();
+    }
+
+    private void editMsg(Long chatId, String newMessage, Integer messageId) {
+        EditMessageText editMessage = new EditMessageText();
+        editMessage.setChatId(chatId);
+        editMessage.setText(newMessage);
+        editMessage.setMessageId(messageId);
+        try {
+            execute(editMessage);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void editMsg(Long chatId, String newMessage, Integer messageId, List<String> buttonText, int rows) {
+        EditMessageText editMessage = new EditMessageText();
+        editMessage.setChatId(chatId);
+        editMessage.setText(newMessage);
+        editMessage.setMessageId(messageId);
+        InlineKeyboardMarkup inlineKeyboardMarkup = createCustomKeyboard(buttonText, rows);
+        editMessage.setReplyMarkup(inlineKeyboardMarkup);
+        try {
+            execute(editMessage);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -177,7 +210,7 @@ public class MyBot extends TelegramLongPollingBot {
     }
 
     @Transactional
-    private void registerUser(Long chatId, String name, String nickname) {
+    private void registerUser(Long chatId, String name, String nickname, Integer messageId) {
         //TODO: fix order code
         UserDto userDto = new UserDto();
         userDto.setChatId(chatId);
@@ -188,10 +221,10 @@ public class MyBot extends TelegramLongPollingBot {
 
         if (!isUserExist(chatId)) {
             userService.saveUser(userDto);
-            sendMsgToUser(chatId, "You successfully registered");
+            editMsg(chatId, "You successfully registered", messageId);
 
         } else {
-            sendMsgToUser(chatId, "You've already registered in this Bot");
+            editMsg(chatId, "You've already registered in this Bot", messageId);
         }
     }
 

@@ -22,9 +22,13 @@ public class User {
     private String nickname;
     @Column(name = "chat_id")
     private Long chatId;
+    @Column(name = "temp_chat_id_for_reply")
+    private Long tempChatIdForReply;
 
     @Enumerated(EnumType.STRING)
     private Role role;
     @Enumerated(EnumType.STRING)
     private UserStatus status;
+    @Enumerated(EnumType.STRING)
+    private AdminStatus adminStatus;
 }
